@@ -1,14 +1,25 @@
 import Link from "next/link";
 import { Phone, MapPin, Clock } from "lucide-react";
-
+import Image from "next/image";
 const Footer = () => (
   <footer className="bg-foreground text-primary-foreground py-12">
     <div className="container mx-auto px-4">
       <div className="grid md:grid-cols-3 gap-8 mb-8">
         <div>
-          <h3 className="font-heading text-lg font-bold mb-3">
-            🌿 Mofarm Smart Farming
-          </h3>
+          <div className="flex justify-start items-center gap-2">
+            {" "}
+            <Image
+              src="/mofarmlogo.jpeg"
+              width={50}
+              height={50}
+              alt="Mofarm Logo"
+              className="rounded-full object-cover"
+            />
+            <h3 className="font-heading text-lg font-bold mb-3">
+              Mofarm Smart Farming
+            </h3>
+          </div>
+
           <p className="text-sm text-primary-foreground/70">
             Your trusted source for fresh farm produce in Nyeri. We supply
             restaurants, schools and businesses with quality fruits, vegetables,
