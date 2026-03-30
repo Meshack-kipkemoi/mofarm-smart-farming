@@ -3,7 +3,7 @@
 import { ShoppingCart, Menu, X, Phone, MapPin } from "lucide-react";
 import { useCart } from "@/context/CartContext";
 import { useState, useEffect } from "react";
-
+import Image from "next/image";
 const Navbar = () => {
   const { totalItems, setIsCartOpen } = useCart();
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -53,10 +53,19 @@ const Navbar = () => {
             onClick={() => scrollTo("hero")}
             className={`font-heading text-xl font-bold transition-colors ${scrolled ? "text-primary" : "text-white"}`}
           >
-            🌿 Mofarm{" "}
-            <span className={scrolled ? "text-slate-600" : "text-white"}>
-              Smart Farming
-            </span>
+            <div className="flex justify-between items-center gap-2">
+              {" "}
+              <Image
+                src="/mofarmlogo.jpeg"
+                width={50}
+                height={50}
+                alt="Mofarm Logo"
+                className=" rounded-full object-cover"
+              />
+              <span className={scrolled ? "text-slate-600" : "text-white"}>
+                Mofarm Smart Farming
+              </span>
+            </div>
           </button>
 
           <div
