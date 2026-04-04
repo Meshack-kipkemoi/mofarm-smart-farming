@@ -1,127 +1,167 @@
 // @/stores/cart-store.ts
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import { immer } from "zustand/middleware/immer";
 import { Product } from "@/types/product";
 
 export type CartItem = {
-  id: string;
-  product: Product;
+  productId: string;
   quantity: number;
 };
 
 interface CartStore {
+  // Cart items (minimal)
   items: CartItem[];
+
+  // Products cache (fetched from API)
+  products: Product[];
+
+  // UI State
   isCartOpen: boolean;
   isCheckoutOpen: boolean;
+  isLoading: boolean;
+  error: string | null;
 
-  // Actions
-  addToCart: (product: Product) => void;
-  removeFromCart: (cartItemId: string) => void; // Now uses cart item id
-  updateQuantity: (cartItemId: string, quantity: number) => void; // Now uses cart item id
+  // Cart Actions
+  addToCart: (productId: string) => void;
+  removeFromCart: (productId: string) => void;
+  updateQuantity: (productId: string, quantity: number) => void;
   clearCart: () => void;
+
+  // Product Actions
+  setProducts: (products: Product[]) => void;
+  fetchProducts: () => Promise<void>;
+
+  // UI Actions
   setIsCartOpen: (open: boolean) => void;
   setIsCheckoutOpen: (open: boolean) => void;
 
-  // Getters (call these in components or use selectors)
+  // Getters
   getTotalItems: () => number;
   getTotalPrice: () => number;
+  getProduct: (productId: string) => Product | undefined;
+  getCartItemsWithProducts: () => Array<CartItem & { product: Product }>;
+  isInCart: (productId: string) => boolean;
+  getItemQuantity: (productId: string) => number;
 }
 
-// Simple ID generator (works in all browsers, no crypto needed)
-const generateId = () =>
-  `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
-
 export const useCartStore = create<CartStore>()(
-  persist(
-    (set, get) => ({
-      items: [],
-      isCartOpen: false,
-      isCheckoutOpen: false,
+  immer(
+    persist(
+      (set, get) => ({
+        items: [],
+        products: [],
+        isCartOpen: false,
+        isCheckoutOpen: false,
+        isLoading: false,
+        error: null,
 
-      addToCart: (product) => {
-        set((state) => {
-          // Check if product already exists in cart
-          const existingItem = state.items.find(
-            (item) => item.product.id === product.id,
-          );
+        addToCart: (productId) => {
+          set((state) => {
+            const existingItem = state.items.find(
+              (item) => item.productId === productId,
+            );
+            if (existingItem) {
+              existingItem.quantity += 1;
+            } else {
+              state.items.push({ productId, quantity: 1 });
+            }
+          });
+        },
 
-          if (existingItem) {
-            // Increment quantity of existing line item
-            return {
-              items: state.items.map((item) =>
-                item.id === existingItem.id
-                  ? { ...item, quantity: item.quantity + 1 }
-                  : item,
-              ),
-            };
+        removeFromCart: (productId) => {
+          set((state) => {
+            const index = state.items.findIndex(
+              (item) => item.productId === productId,
+            );
+            if (index !== -1) state.items.splice(index, 1);
+          });
+        },
+
+        updateQuantity: (productId, quantity) => {
+          if (quantity <= 0) {
+            get().removeFromCart(productId);
+            return;
           }
+          set((state) => {
+            const item = state.items.find(
+              (item) => item.productId === productId,
+            );
+            if (item) item.quantity = quantity;
+          });
+        },
 
-          // Add new item with unique cart item ID
-          return {
-            items: [...state.items, { id: generateId(), product, quantity: 1 }],
-          };
-        });
+        clearCart: () => set({ items: [] }),
 
-        // Optional: Auto-open cart
-        // set({ isCartOpen: true });
-      },
+        setProducts: (products) => set({ products }),
 
-      removeFromCart: (cartItemId) => {
-        set((state) => ({
-          items: state.items.filter((item) => item.id !== cartItemId),
-        }));
-      },
+        fetchProducts: async () => {
+          set({ isLoading: true, error: null });
+          try {
+            const { data } = await import("axios").then((axios) =>
+              axios.default.get<Product[]>("/api/products"),
+            );
+            set({ products: data, isLoading: false });
+          } catch (err) {
+            set({
+              error: err instanceof Error ? err.message : "Failed to fetch",
+              isLoading: false,
+            });
+          }
+        },
 
-      updateQuantity: (cartItemId, quantity) => {
-        if (quantity <= 0) {
-          get().removeFromCart(cartItemId);
-        } else {
-          set((state) => ({
-            items: state.items.map((item) =>
-              item.id === cartItemId ? { ...item, quantity } : item,
-            ),
-          }));
-        }
-      },
+        setIsCartOpen: (open) => set({ isCartOpen: open }),
+        setIsCheckoutOpen: (open) => set({ isCheckoutOpen: open }),
 
-      clearCart: () => set({ items: [] }),
+        getTotalItems: () =>
+          get().items.reduce((sum, item) => sum + item.quantity, 0),
 
-      setIsCartOpen: (open) => set({ isCartOpen: open }),
-      setIsCheckoutOpen: (open) => set({ isCheckoutOpen: open }),
+        getTotalPrice: () => {
+          const { items, products } = get();
+          return items.reduce((sum, item) => {
+            const product = products.find((p) => p.id === item.productId);
+            return sum + (product?.price || 0) * item.quantity;
+          }, 0);
+        },
 
-      getTotalItems: () =>
-        get().items.reduce((sum, item) => sum + item.quantity, 0),
+        getProduct: (productId) =>
+          get().products.find((p) => p.id === productId),
 
-      getTotalPrice: () =>
-        get().items.reduce(
-          (sum, item) => sum + item.product.price * item.quantity,
+        getCartItemsWithProducts: () => {
+          const { items, products } = get();
+          return items
+            .map((item) => ({
+              ...item,
+              product: products.find((p) => p.id === item.productId),
+            }))
+            .filter(
+              (item): item is CartItem & { product: Product } =>
+                item.product !== undefined,
+            );
+        },
+
+        isInCart: (productId) =>
+          get().items.some((item) => item.productId === productId),
+
+        getItemQuantity: (productId) =>
+          get().items.find((item) => item.productId === productId)?.quantity ||
           0,
-        ),
-    }),
-    {
-      name: "mofarm_cart",
-      // Only persist cart items, not UI state (drawer/modal open states)
-      partialize: (state) => ({ items: state.items }),
-    },
+      }),
+      {
+        name: "mofarm_cart",
+        partialize: (state) => ({ items: state.items }), // Don't persist products, only cart
+      },
+    ),
   ),
 );
 
-// Optional: Drop-in replacement hook matching your old Context API
-// Usage: const { items, totalItems, removeFromCart } = useCart();
+// Convenience hook that returns enriched cart items
 export function useCart() {
   const store = useCartStore();
-
   return {
-    items: store.items,
-    addToCart: store.addToCart,
-    removeFromCart: store.removeFromCart,
-    updateQuantity: store.updateQuantity,
-    clearCart: store.clearCart,
-    isCartOpen: store.isCartOpen,
-    setIsCartOpen: store.setIsCartOpen,
-    isCheckoutOpen: store.isCheckoutOpen,
-    setIsCheckoutOpen: store.setIsCheckoutOpen,
-    totalItems: store.getTotalItems(),
+    ...store,
+    cartItems: store.getCartItemsWithProducts(), // Enriched with product data
     totalPrice: store.getTotalPrice(),
+    totalItems: store.getTotalItems(),
   };
 }

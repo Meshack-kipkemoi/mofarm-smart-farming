@@ -12,7 +12,7 @@ const ProductCard = ({ product }: { product: Product }) => {
   const [added, setAdded] = useState(false);
 
   const handleAdd = () => {
-    addToCart(product);
+    addToCart(product.id);
     setAdded(true);
     setTimeout(() => setAdded(false), 1200);
   };

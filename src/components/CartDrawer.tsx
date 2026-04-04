@@ -1,4 +1,3 @@
-// @/components/cart/cart-drawer.tsx
 "use client";
 import {
   Sheet,
@@ -15,13 +14,13 @@ import { useCart } from "@/stores/cart-store";
 
 const CartDrawer = () => {
   const {
-    items,
+    cartItems, // Now enriched with product data
     isCartOpen,
     setIsCartOpen,
-    totalPrice,
     updateQuantity,
     removeFromCart,
     setIsCheckoutOpen,
+    totalPrice,
   } = useCart();
 
   const handleCheckout = () => {
@@ -39,9 +38,8 @@ const CartDrawer = () => {
           </SheetTitle>
         </SheetHeader>
 
-        {/* Scrollable Items Area */}
         <ScrollArea className="flex-1 px-6 py-4">
-          {items.length === 0 ? (
+          {cartItems.length === 0 ? (
             <div className="text-center py-20 text-muted-foreground">
               <ShoppingBag className="h-16 w-16 mx-auto mb-4 opacity-20" />
               <p className="text-lg">Your cart is empty</p>
@@ -55,9 +53,9 @@ const CartDrawer = () => {
             </div>
           ) : (
             <div className="space-y-4">
-              {items.map((item) => (
+              {cartItems.map((item) => (
                 <div
-                  key={item.product.id}
+                  key={item.productId}
                   className="flex gap-4 rounded-xl border bg-muted/30 p-3"
                 >
                   <div className="relative size-20 shrink-0 overflow-hidden rounded-lg bg-muted">
@@ -91,7 +89,7 @@ const CartDrawer = () => {
                         size="icon"
                         className="h-7 w-7"
                         onClick={() =>
-                          updateQuantity(item.product.id, item.quantity - 1)
+                          updateQuantity(item.productId, item.quantity - 1)
                         }
                       >
                         <Minus className="h-3 w-3" />
@@ -104,7 +102,7 @@ const CartDrawer = () => {
                         size="icon"
                         className="h-7 w-7"
                         onClick={() =>
-                          updateQuantity(item.product.id, item.quantity + 1)
+                          updateQuantity(item.productId, item.quantity + 1)
                         }
                       >
                         <Plus className="h-3 w-3" />
@@ -117,7 +115,7 @@ const CartDrawer = () => {
                       variant="ghost"
                       size="icon"
                       className="h-7 w-7 text-muted-foreground hover:text-destructive"
-                      onClick={() => removeFromCart(item.product.id)}
+                      onClick={() => removeFromCart(item.productId)}
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>
@@ -132,8 +130,7 @@ const CartDrawer = () => {
           )}
         </ScrollArea>
 
-        {/* Footer */}
-        {items.length > 0 && (
+        {cartItems.length > 0 && (
           <SheetFooter className="flex-col border-t bg-muted/30 px-6 py-6 gap-4">
             <div className="flex items-center justify-between w-full font-heading font-bold text-xl">
               <span className="text-muted-foreground">Total</span>
@@ -141,12 +138,9 @@ const CartDrawer = () => {
                 KSh {totalPrice.toLocaleString()}
               </span>
             </div>
-            <Button size={"xl"} onClick={handleCheckout}>
-              Proceed to Checkout <ArrowRight className="ml-2" />
+            <Button size="lg" className="w-full" onClick={handleCheckout}>
+              Proceed to Checkout <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
-            <p className="text-[10px] text-center text-muted-foreground uppercase tracking-widest">
-              Secure Delivery to Nyeri & Surrounding Areas
-            </p>
           </SheetFooter>
         )}
       </SheetContent>

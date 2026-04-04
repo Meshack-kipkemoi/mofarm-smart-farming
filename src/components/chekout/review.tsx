@@ -18,7 +18,7 @@ import axios from "axios";
 import { useCart } from "@/stores/cart-store";
 
 export const Review = () => {
-  const { items, totalPrice } = useCart();
+  const { cartItems, items, totalPrice } = useCart();
 
   // Get store state and actions
   const {
@@ -65,7 +65,7 @@ export const Review = () => {
     });
 
     try {
-      await axios.post("/api/checkout/pay", data);
+      await axios.post("/api/checkout/pay", { ...data, items });
       toast.dismiss("checkout-payment");
       toast.success("STK Push sent! Check your phone.");
       setStep("payment");
@@ -99,7 +99,7 @@ export const Review = () => {
     >
       <div className="space-y-2">
         <div className="space-y-2 max-h-40 pr-2">
-          {items.map((item) => (
+          {cartItems.map((item) => (
             <div
               key={item.product.id}
               className="flex justify-between text-sm py-1 border-b"
