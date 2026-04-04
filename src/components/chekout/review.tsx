@@ -1,6 +1,5 @@
 // @/components/chekout/review.tsx
 "use client";
-import { useCart } from "@/context/CartContext";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Controller, useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
@@ -16,6 +15,7 @@ import { useCheckoutStore } from "@/stores/checkout-store";
 import { useEffect } from "react";
 import { toast } from "sonner";
 import axios from "axios";
+import { useCart } from "@/stores/cart-store";
 
 export const Review = () => {
   const { items, totalPrice } = useCart();

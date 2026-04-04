@@ -1,17 +1,13 @@
+import { createSuperClient } from "@/lib/supabase/admin";
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
-);
 
 export async function GET() {
   try {
+    const supabase = await createSuperClient();
     const { data, error } = await supabase.from("products").select("*");
 
     if (error) {
-      console.error("Supabase error:", error);
+      console.log("Supabase error:", error);
       return NextResponse.json(
         { error: "Failed to fetch products" },
         { status: 500 },
@@ -20,7 +16,7 @@ export async function GET() {
 
     return NextResponse.json(data);
   } catch (error) {
-    console.error("Server error:", error);
+    console.log("Server error:", error);
 
     return NextResponse.json(
       { error: "Unexpected server error" },

@@ -1,7 +1,6 @@
 // @/components/navbar.tsx
 "use client";
 import { ShoppingCart, Menu, Phone, MapPin } from "lucide-react";
-import { useCart } from "@/context/CartContext";
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -10,12 +9,14 @@ import {
   SheetTrigger,
   SheetTitle,
   SheetHeader,
+  SheetDescription,
 } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { MofarmLogo } from "./logo";
 import { Separator } from "./ui/separator";
+import { useCart } from "@/stores/cart-store";
 
 const navLinks = [
   { id: "products", label: "Products" },
@@ -151,6 +152,9 @@ const Navbar = () => {
                     <MofarmLogo className="size-8" />
                     Mofarm Smart Farming
                   </SheetTitle>
+                  <SheetDescription className="sr-only">
+                    Mofarm Smart Farming sidebar
+                  </SheetDescription>
                 </SheetHeader>
 
                 <div className="flex flex-col h-full justify-between p-6">

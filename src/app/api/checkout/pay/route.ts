@@ -12,7 +12,8 @@ export async function POST(request: Request) {
     // parse() throws on validation failure
     const validatedData = checkoutSchema.parse(body);
 
-    console.log("Validated:", validatedData);
+    //Calculate the price of all the items in the cart
+
     const mpesaData = await sendStk(
       1,
       formatPhoneNumber(validatedData.phone),

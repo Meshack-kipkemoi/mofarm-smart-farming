@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { Inter, Montserrat, Geist } from "next/font/google";
 import "./globals.css";
-import { CartProvider } from "@/context/CartContext";
 import Navbar from "@/components/Navbar";
 import CartDrawer from "@/components/CartDrawer";
 import CheckoutModal from "@/components/chekout/CheckoutModal";
@@ -44,18 +43,16 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <CartProvider>
-            <Toaster position="top-center" richColors />
-            <Navbar />
-            {/* Use a flex-col wrapper to push footer to bottom on short pages */}
-            <div className="flex flex-col min-h-screen">
-              <main className="grow">{children}</main>
-              <Footer />
-            </div>
+          <Toaster position="top-center" richColors />
+          <Navbar />
+          {/* Use a flex-col wrapper to push footer to bottom on short pages */}
+          <div className="flex flex-col min-h-screen">
+            <main className="grow">{children}</main>
+            <Footer />
+          </div>
 
-            <CartDrawer />
-            <CheckoutModal />
-          </CartProvider>
+          <CartDrawer />
+          <CheckoutModal />
         </ThemeProvider>
       </body>
     </html>

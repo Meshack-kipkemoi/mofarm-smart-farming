@@ -10,8 +10,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { ArrowRight, Minus, Plus, ShoppingBag, Trash2 } from "lucide-react";
-import { useCart } from "@/context/CartContext";
 import { Image } from "./ui/image";
+import { useCart } from "@/stores/cart-store";
 
 const CartDrawer = () => {
   const {

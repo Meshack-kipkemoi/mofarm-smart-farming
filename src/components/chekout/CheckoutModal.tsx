@@ -2,7 +2,6 @@
 "use client";
 
 import { CheckCircle } from "lucide-react";
-import { useCart } from "@/context/CartContext";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -14,6 +13,7 @@ import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Review } from "./review";
 import { Payment } from "./payment";
 import { useCheckoutStore } from "@/stores/checkout-store";
+import { useCart } from "@/stores/cart-store";
 
 const CheckoutModal = () => {
   const { isCheckoutOpen, setIsCheckoutOpen, clearCart } = useCart();
