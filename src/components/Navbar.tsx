@@ -1,6 +1,5 @@
 // @/components/navbar.tsx
 "use client";
-
 import { ShoppingCart, Menu, Phone, MapPin } from "lucide-react";
 import { useCart } from "@/context/CartContext";
 import { useState, useEffect } from "react";
@@ -10,11 +9,13 @@ import {
   SheetContent,
   SheetTrigger,
   SheetTitle,
+  SheetHeader,
 } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
-import { Image } from "./ui/image";
+import { MofarmLogo } from "./logo";
+import { Separator } from "./ui/separator";
 
 const navLinks = [
   { id: "products", label: "Products" },
@@ -77,16 +78,8 @@ const Navbar = () => {
             asChild
           >
             <Link href="/">
-              <div className="relative">
-                <Image
-                  src="/mofarmlogo.jpeg"
-                  width={38}
-                  height={38}
-                  alt="Mofarm Logo"
-                  className="rounded-full object-cover ring-2 ring-primary/20 group-hover:ring-primary/50 transition-all duration-300"
-                />
-              </div>
-              <div className="hidden sm:flex flex-col items-start leading-none gap-0.5">
+              <MofarmLogo className="size-12" />
+              <div className="flex flex-col items-start leading-none gap-0.5">
                 <span
                   className={`font-bold text-base tracking-tight transition-colors duration-300 ${
                     scrolled ? "text-foreground" : "text-white"
@@ -146,47 +139,37 @@ const Navbar = () => {
                 <Button
                   variant="ghost"
                   size="icon-lg"
-                  className={`rounded-full h-9 w-9 ${
-                    scrolled
-                      ? "text-foreground hover:bg-accent"
-                      : "text-white hover:bg-white/10"
-                  }`}
+                  className={cn(`text-white`, scrolled && "text-foreground")}
                 >
                   <Menu />
                 </Button>
               </SheetTrigger>
 
-              <SheetContent
-                side="right"
-                className="w-[280px] sm:w-[320px] flex flex-col"
-              >
-                <SheetTitle className="flex items-center gap-2.5 text-base font-semibold">
-                  <Image
-                    src="/mofarmlogo.jpeg"
-                    width={30}
-                    height={30}
-                    alt="Mofarm Logo"
-                    className="rounded-full ring-1 ring-border"
-                  />
-                  Mofarm Smart Farming
-                </SheetTitle>
+              <SheetContent side="right" className="w-3/4 sm:w-1/2 lg:w-1/4">
+                <SheetHeader>
+                  <SheetTitle className="flex items-center gap-2.5 text-base font-semibold">
+                    <MofarmLogo className="size-8" />
+                    Mofarm Smart Farming
+                  </SheetTitle>
+                </SheetHeader>
 
+              <div className="flex flex-col h-full justify-between p-6">
                 {/* Nav links */}
                 <nav className="flex flex-col gap-1 mt-6">
                   {navLinks.map(({ id, label }) => (
-                    <Button
-                      key={id}
-                      variant="ghost"
-                      className="justify-start text-base font-normal h-11 rounded-lg text-foreground hover:text-primary hover:bg-primary/10"
-                      onClick={() => scrollTo(id)}
-                    >
-                      {label}
-                    </Button>
+                    <>
+                      <Button
+                        key={id}
+                        variant="ghost"
+                        className="justify-start text-base font-normal h-11 rounded-lg text-foreground hover:text-primary hover:bg-primary/10"
+                        onClick={() => scrollTo(id)}
+                      >
+                        {label}
+                      </Button>
+                      <Separator />
+                    </>
                   ))}
                 </nav>
-
-                {/* Divider */}
-                <div className="border-t border-border mt-auto" />
 
                 {/* Contact info */}
                 <div className="bg-muted rounded-xl p-4 space-y-2.5">
@@ -194,13 +177,13 @@ const Navbar = () => {
                     Contact & Delivery
                   </p>
                   <div className="flex items-center gap-2.5 text-sm text-foreground">
-                    <div className="h-7 w-7 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                    <div className="h-7 w-7 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
                       <Phone className="h-3.5 w-3.5 text-primary" />
                     </div>
                     +254 703 946365
                   </div>
                   <div className="flex items-center gap-2.5 text-sm text-foreground">
-                    <div className="h-7 w-7 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                    <div className="h-7 w-7 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
                       <MapPin className="h-3.5 w-3.5 text-primary" />
                     </div>
                     Nyeri, Kenya
@@ -210,6 +193,7 @@ const Navbar = () => {
                       Mon, Wed & Sat Delivery
                     </Badge>
                   </div>
+                </div>
                 </div>
               </SheetContent>
             </Sheet>

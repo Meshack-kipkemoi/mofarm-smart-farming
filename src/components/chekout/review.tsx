@@ -19,7 +19,7 @@ import axioS from "axios";
 import { toast } from "sonner";
 
 export const Review = () => {
-  const { items, totalPrice, setIsCheckoutOpen, clearCart } = useCart();
+  const { items, totalPrice } = useCart();
 
   // Get store state and actions
   const {
