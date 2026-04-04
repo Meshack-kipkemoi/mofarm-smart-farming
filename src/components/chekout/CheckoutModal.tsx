@@ -1,5 +1,6 @@
+// @/components/chekout/index.tsx
 "use client";
-import { useState } from "react";
+
 import { CheckCircle } from "lucide-react";
 import { useCart } from "@/context/CartContext";
 import { Button } from "@/components/ui/button";
@@ -11,12 +12,34 @@ import {
 } from "@/components/ui/dialog";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Review } from "./review";
-
-type CheckoutSteps = "review" | "payment" | "done";
+import { Payment } from "./payment";
+import { useCheckoutStore } from "@/stores/checkout-store";
 
 const CheckoutModal = () => {
-  const { isCheckoutOpen, setIsCheckoutOpen } = useCart();
-  const [step, setStep] = useState<CheckoutSteps>("review");
+  const { isCheckoutOpen, setIsCheckoutOpen, clearCart } = useCart();
+
+  // Get step from store instead of local state
+  const { step, resetCheckout, name, phone, address } = useCheckoutStore();
+
+  const handleClose = () => {
+    setIsCheckoutOpen(false);
+    // Reset after animation
+    setTimeout(() => {
+      resetCheckout();
+    }, 300);
+  };
+
+  const handleOrderComplete = () => {
+    // Access stored form data anywhere
+    console.log("Order completed with:", { name, phone, address });
+
+    clearCart();
+    handleClose();
+
+    // Redirect to WhatsApp or other logic
+    const message = `Hello! I just placed an order. Name: ${name}, Address: ${address}`;
+    window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, "_blank");
+  };
 
   return (
     <Dialog open={isCheckoutOpen} onOpenChange={setIsCheckoutOpen}>
@@ -32,14 +55,7 @@ const CheckoutModal = () => {
           <div className="py-4">
             {step === "review" && <Review />}
 
-            {step === "payment" && (
-              <div className="space-y-6">
-                <p>Payment step content here...</p>
-                <Button onClick={() => setStep("done")} className="w-full">
-                  Complete Payment
-                </Button>
-              </div>
-            )}
+            {step === "payment" && <Payment />}
 
             {step === "done" && (
               <div className="text-center py-12 space-y-4">
@@ -48,6 +64,9 @@ const CheckoutModal = () => {
                 <p className="text-slate-600">
                   Redirecting to WhatsApp to finalize your delivery...
                 </p>
+                <Button onClick={handleOrderComplete} className="w-full mt-4">
+                  Open WhatsApp
+                </Button>
               </div>
             )}
           </div>
