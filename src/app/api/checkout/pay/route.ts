@@ -83,6 +83,7 @@ export async function POST(request: Request) {
           name: validatedData.name,
           email: validatedData.email,
           phone: validatedData.phone,
+          address: validatedData.address,
           amount: totalAmount,
           order_status: "pending",
           items: body.items,

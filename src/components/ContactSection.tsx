@@ -1,6 +1,5 @@
 "use client";
-
-import { Send, Phone, MapPin, Clock, LucideIcon } from "lucide-react";
+import { Send } from "lucide-react";
 import { toast } from "sonner";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Controller, useForm } from "react-hook-form";
@@ -13,6 +12,7 @@ import {
   FieldLabel,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { contactInfo } from "@/data/contact";
 
 // Schema definition (move to @/schemas/contact.ts if preferred)
 const contactSchema = z.object({
@@ -22,36 +22,6 @@ const contactSchema = z.object({
 });
 
 type ContactFormData = z.infer<typeof contactSchema>;
-
-interface ContactInfoItem {
-  icon: LucideIcon;
-  label: string;
-  value: string;
-  href?: string;
-  subtext?: string;
-}
-
-const contactInfo: ContactInfoItem[] = [
-  {
-    icon: Phone,
-    label: "Phone",
-    value: "+254 703 946365",
-    href: "tel:+254703946365",
-    subtext: "Call or WhatsApp",
-  },
-  {
-    icon: MapPin,
-    label: "Location",
-    value: "Nyeri, Kenya",
-    subtext: "Central Highlands",
-  },
-  {
-    icon: Clock,
-    label: "Delivery Days",
-    value: "Monday, Wednesday & Saturday",
-    subtext: "Fresh delivery schedule",
-  },
-];
 
 const ContactSection = () => {
   const form = useForm<ContactFormData>({
