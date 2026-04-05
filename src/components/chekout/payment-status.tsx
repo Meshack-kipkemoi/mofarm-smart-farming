@@ -1,4 +1,3 @@
-// @/components/checkout/payment.tsx
 "use client";
 
 import { useEffect, useState } from "react";
@@ -7,11 +6,12 @@ import {
   PaymentStatus as PaymentStatusType,
 } from "@/stores/checkout-store";
 import { Button } from "@/components/ui/button";
-import { CheckCircle2, XCircle, Loader } from "lucide-react";
+import { CheckCircle2, XCircle, Loader, RefreshCw } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
 import { useShallow } from "zustand/shallow";
 import { ScrollArea, ScrollBar } from "@ui/scroll-area";
+import { usePaymentHandler } from "@/hooks/use-payment";
 
 const statusConfig: Record<
   PaymentStatusType,
@@ -21,6 +21,7 @@ const statusConfig: Record<
     description: string;
     iconColor: string;
     textColor: string;
+    bgColor: string;
   }
 > = {
   pending: {
@@ -29,6 +30,7 @@ const statusConfig: Record<
     description: "Check your phone for STK push",
     iconColor: "text-primary",
     textColor: "text-muted-foreground",
+    bgColor: "bg-blue-50/50",
   },
   completed: {
     icon: <CheckCircle2 className="size-12 mx-auto" />,
@@ -36,17 +38,22 @@ const statusConfig: Record<
     description: "Your order has been confirmed",
     iconColor: "text-green-500",
     textColor: "text-green-600",
+    bgColor: "bg-green-50/50",
   },
   failed: {
     icon: <XCircle className="size-12 mx-auto" />,
     title: "Payment failed",
-    description: "Please try again or use a different method",
+    description: "Please try again or use a different number",
     iconColor: "text-destructive",
     textColor: "text-destructive",
+    bgColor: "bg-red-50/50",
   },
 };
 
 export function PaymentStatus() {
+  const { handlePayment, isProcessing } = usePaymentHandler();
+  const [isListening, setIsListening] = useState(false);
+
   const {
     paymentStatus,
     setPaymentStatus,
@@ -55,7 +62,7 @@ export function PaymentStatus() {
     phone,
     email,
     address,
-    transactionId, // Get this from your store
+    transactionId,
     payment_phone,
   } = useCheckoutStore(
     useShallow((state) => ({
@@ -71,21 +78,20 @@ export function PaymentStatus() {
     })),
   );
 
-  const [isListening, setIsListening] = useState(false);
-
   const orderDetails = [
     { label: "Customer", value: name },
-    { label: "Phone", value: phone },
+    { label: "Contact Phone", value: phone },
+    { label: "Payment Phone", value: payment_phone },
     { label: "Email", value: email },
     { label: "Delivery", value: address },
   ];
 
+  // Real-time subscription effect (keep your existing useEffect)
   useEffect(() => {
     if (!transactionId) return;
 
     const supabase = createClient();
 
-    // Initial fetch to get current status
     const fetchInitialStatus = async () => {
       const { data, error } = await supabase
         .from("transactions")
@@ -108,7 +114,6 @@ export function PaymentStatus() {
 
     fetchInitialStatus();
 
-    // Subscribe to realtime changes
     const channel = supabase
       .channel(`transaction_${transactionId}`)
       .on(
@@ -120,27 +125,21 @@ export function PaymentStatus() {
           filter: `id=eq.${transactionId}`,
         },
         (payload) => {
-          console.log("Realtime update received:", payload);
-
           const newStatus = payload.new.status as PaymentStatusType;
-
-          // Update UI based on new status
           setPaymentStatus(newStatus);
 
           if (newStatus === "completed") {
             toast.success("Payment completed successfully!");
             setTimeout(() => setStep("success"), 800);
           } else if (newStatus === "failed") {
-            toast.error("Payment failed. Please try again.");
+            toast.error("Payment failed. You can retry below.");
           }
         },
       )
       .subscribe((status) => {
-        console.log("Realtime subscription status:", status);
         setIsListening(status === "SUBSCRIBED");
       });
 
-    // Cleanup subscription on unmount
     return () => {
       supabase.removeChannel(channel);
     };
@@ -148,16 +147,27 @@ export function PaymentStatus() {
 
   const currentStatus = statusConfig[paymentStatus];
 
-  // Retry payment handler
+  // Retry handler - uses stored payment_phone
   const handleRetry = async () => {
-    // Reset to review step to re-initiate payment
+    if (!payment_phone) {
+      // If no payment phone stored, go back to payment step
+      setStep("payment");
+      return;
+    }
+
+    // Retry payment with stored phone number
+    await handlePayment();
+  };
+
+  // Go back to change payment details
+  const handleEditPayment = () => {
     setStep("payment");
   };
 
   return (
     <ScrollArea className="h-0 flex-1">
       <div className="space-y-6 py-6 px-4">
-        {/* Connection Status Indicator */}
+        {/* Connection Status */}
         {isListening && paymentStatus === "pending" && (
           <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
             <span className="relative flex h-2 w-2">
@@ -168,63 +178,83 @@ export function PaymentStatus() {
           </div>
         )}
 
-        {/* Order Summary */}
-        <div className="bg-muted/50 p-4 rounded-lg space-y-2 text-sm border">
-          <h4 className="font-semibold text-foreground">Order Details</h4>
-          {orderDetails.map(({ label, value }) => (
-            <div key={label} className="flex justify-between">
-              <span className="text-muted-foreground">{label}:</span>
-              <span className="font-medium text-foreground">
-                {value || "N/A"}
-              </span>
-            </div>
-          ))}
-          <h4 className="font-semibold text-foreground mt-4">
-            Payment Details
-          </h4>
-          <div className="flex justify-between">
-            <span className="text-muted-foreground">Phone:</span>
-            <span className="font-medium text-foreground">
-              {payment_phone || "N/A"}
-            </span>
-          </div>
-        </div>
-
-        <div className={`space-y-4 p-2 rounded-lg border bg-muted/50`}>
-          {/* Status Display */}
-          <div className="text-center py-8 space-y-3">
-            <div className={currentStatus.iconColor}>{currentStatus.icon}</div>
-            <div className="space-y-1">
-              <p className={`font-medium ${currentStatus.textColor}`}>
-                {currentStatus.title}
-              </p>
-              <p className="text-sm text-muted-foreground">
-                {paymentStatus === "pending"
-                  ? `Check your phone ${phone} for STK push`
-                  : currentStatus.description}
-              </p>
-            </div>
+        {/* Status Display */}
+        <div
+          className={`${currentStatus.bgColor} rounded-xl border p-6 text-center space-y-4`}
+        >
+          <div className={currentStatus.iconColor}>{currentStatus.icon}</div>
+          <div className="space-y-1">
+            <h3 className={`font-semibold text-lg ${currentStatus.textColor}`}>
+              {currentStatus.title}
+            </h3>
+            <p className="text-sm text-muted-foreground">
+              {paymentStatus === "pending"
+                ? `Check your phone ${payment_phone} for STK push`
+                : currentStatus.description}
+            </p>
           </div>
 
-          {/* Action Buttons */}
-          <div className="flex gap-2">
-            {paymentStatus === "failed" && (
-              <Button onClick={handleRetry} className="flex-1">
-                Retry Payment
+          {/* Retry Button - Only show on failed */}
+          {paymentStatus === "failed" && (
+            <div className="pt-4 space-y-2">
+              <Button
+                onClick={handleRetry}
+                disabled={isProcessing}
+                className="w-full"
+                size="lg"
+              >
+                {isProcessing ? (
+                  <>
+                    <Loader className="mr-2 h-4 w-4 animate-spin" />
+                    Retrying...
+                  </>
+                ) : (
+                  <>
+                    <RefreshCw className="mr-2 h-4 w-4" />
+                    Retry Payment
+                  </>
+                )}
               </Button>
-            )}
-
-            {(paymentStatus === "completed" || paymentStatus === "failed") && (
               <Button
                 variant="outline"
-                className="flex-1"
-                onClick={() => setStep("payment")}
+                onClick={handleEditPayment}
+                className="w-full"
+                size="sm"
               >
-                Back to Payment
+                Change Payment Number
               </Button>
-            )}
+            </div>
+          )}
+        </div>
+
+        {/* Order Summary */}
+        <div className="bg-muted/50 p-4 rounded-lg space-y-3 text-sm border">
+          <h4 className="font-semibold text-foreground">Order Details</h4>
+          <div className="space-y-2">
+            {orderDetails.map(({ label, value }) => (
+              <div key={label} className="flex justify-between">
+                <span className="text-muted-foreground">{label}:</span>
+                <span className="font-medium text-foreground">
+                  {value || "N/A"}
+                </span>
+              </div>
+            ))}
           </div>
         </div>
+
+        {/* Help Text */}
+        {paymentStatus === "pending" && (
+          <div className="text-center text-xs text-muted-foreground space-y-1">
+            <p>Didn't receive the STK push?</p>
+            <button
+              onClick={handleRetry}
+              disabled={isProcessing}
+              className="text-primary hover:underline disabled:opacity-50"
+            >
+              Click here to resend
+            </button>
+          </div>
+        )}
       </div>
       <ScrollBar />
     </ScrollArea>

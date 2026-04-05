@@ -1,5 +1,5 @@
 import { useCartStore } from "@/stores/cart-store";
-import { ScrollArea, ScrollBar } from "../ui/scroll-area";
+import { ScrollArea, ScrollBar } from "@ui/scroll-area";
 import { useShallow } from "zustand/shallow";
 
 export const OrderSummary = () => {

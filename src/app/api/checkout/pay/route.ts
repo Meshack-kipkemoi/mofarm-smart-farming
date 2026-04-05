@@ -43,6 +43,8 @@ export async function POST(request: Request) {
           .eq("id", transactionId)
           .single();
 
+      //Making sure the edge case of the user changin the order items I still reflect it
+
       if (transactionError) {
         console.log("Error fetching existing transaction:");
         console.log(transactionError);
@@ -51,6 +53,26 @@ export async function POST(request: Request) {
           { status: 500 },
         );
       }
+
+      const { error: orderUpdateError } = await supabase
+        .from("orders")
+        .update({
+          items: body.items,
+          amount: totalAmount,
+        })
+        .eq("id", existingTransaction.order_id)
+        .select("*")
+        .single();
+
+      if (orderUpdateError) {
+        console.log("Error updating existing order:");
+        console.log(orderUpdateError);
+        return NextResponse.json(
+          { message: "Failed to update existing order" },
+          { status: 500 },
+        );
+      }
+
       orderId = existingTransaction?.order_id;
     } else {
       //creating the order in the database

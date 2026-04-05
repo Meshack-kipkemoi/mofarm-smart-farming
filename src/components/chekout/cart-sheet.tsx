@@ -79,6 +79,9 @@ const CartSheet = () => {
   const isCartOpen = useCartStore((state) => state.isCartOpen);
   const setIsCartOpen = useCartStore((state) => state.setIsCartOpen);
   const step = useCheckoutStore((state) => state.step);
+  const setTransactionId = useCheckoutStore((state) => state.setTransactionId);
+  const clearCart = useCartStore((state) => state.clearCart);
+  const setStep = useCheckoutStore((state) => state.setStep);
 
   // ✅ current step
   const currentStep = cartSteps.find((s) => s.step === step) || cartSteps[0]; // default to first step
@@ -88,6 +91,15 @@ const CartSheet = () => {
   const StepComponent = currentStep?.component;
 
   const changeCartState = (open: boolean) => {
+    //if we are in the success step and trying to close the cart, we should just close it without showing the dialog
+    if (step === "success") {
+      setStep("cart");
+      setTransactionId(null); // Clear transaction ID on close
+      clearCart(); // Clear cart on close
+      setIsCartOpen(open);
+      return;
+    }
+
     if (!open && step !== "cart") {
       setIsDialogOpen(true);
       return;
@@ -98,7 +110,7 @@ const CartSheet = () => {
   return (
     <>
       <Sheet open={isCartOpen} onOpenChange={changeCartState}>
-        <SheetContent className="w-full h-screen sm:w-2/3 md:w-2/5 xl:w-1/3 flex flex-col p-0">
+        <SheetContent className="w-full h-screen sm:w-2/3 md:w-2/5 xl:w-1/3 flex flex-col p-0 overflow-hidden">
           {/* ✅ HEADER */}
           <SheetHeader className="px-6 py-4 border-b">
             <div className="flex items-center gap-3">

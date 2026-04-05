@@ -2,15 +2,8 @@
 "use client";
 import { Button } from "@/components/ui/button";
 import { useCartStore } from "@/stores/cart-store";
-import {
-  CheckCircle,
-  Package,
-  Clock,
-  ArrowRight,
-  ShoppingBag,
-} from "lucide-react";
+import { CheckCircle, Package, Clock, ShoppingBag } from "lucide-react";
 import { motion } from "framer-motion";
-import Link from "next/link";
 import { ScrollArea, ScrollBar } from "@ui/scroll-area";
 import { OrderSummary } from "./order-summary";
 import { useCheckoutStore } from "@/stores/checkout-store";
@@ -19,14 +12,12 @@ export const CartSuccess = () => {
   const setIsCartOpen = useCartStore((state) => state.setIsCartOpen);
   const clearCart = useCartStore((state) => state.clearCart);
   const setStep = useCheckoutStore((state) => state.setStep);
+  const setTransactionId = useCheckoutStore((state) => state.setTransactionId);
 
   const handleClose = () => {
     clearCart(); // Clear cart on success
     setStep("cart"); // Reset to cart step for next order
-    setIsCartOpen(false);
-  };
-
-  const handleContinueShopping = () => {
+    setTransactionId(null); // Clear transaction ID
     setIsCartOpen(false);
   };
 
@@ -60,7 +51,7 @@ export const CartSuccess = () => {
                 },
                 {
                   icon: Clock,
-                  text: "You'll receive an SMS confirmation shortly",
+                  text: "You'll receive an Email confirmation shortly",
                 },
                 {
                   icon: Package,
@@ -83,23 +74,9 @@ export const CartSuccess = () => {
         </div>
         {/* Actions */}
         <div className="p-4 border-t bg-background/80 backdrop-blur-sm sticky bottom-0">
-          <div className="flex gap-3">
-            <Button
-              variant="outline"
-              onClick={handleClose}
-              className="flex-1"
-              size={"xl"}
-            >
-              Close
-            </Button>
-
-            <Button onClick={handleContinueShopping} size={"xl"} asChild>
-              <Link href="/">
-                Continue Shopping
-                <ArrowRight className="w-4 h-4 ml-2" />
-              </Link>
-            </Button>
-          </div>
+          <Button onClick={handleClose} size={"xl"} className="w-full">
+            Done <CheckCircle className="size-5" />
+          </Button>
         </div>
       </div>
       <ScrollBar />

@@ -44,17 +44,6 @@ export async function POST(request: Request) {
 
     const supabase = await createSuperClient();
 
-    // Extract receipt number from metadata if payment was successful
-    let mpesaReceiptNumber: string | null = null;
-    if (callback.CallbackMetadata?.Item) {
-      const receiptItem = callback.CallbackMetadata.Item.find(
-        (item) => item.Name === "MpesaReceiptNumber",
-      );
-      if (receiptItem) {
-        mpesaReceiptNumber = String(receiptItem.Value);
-      }
-    }
-
     // Call the RPC function to handle all updates atomically
     const { data: result, error: rpcError } = await supabase.rpc(
       "handle_mpesa_callback",

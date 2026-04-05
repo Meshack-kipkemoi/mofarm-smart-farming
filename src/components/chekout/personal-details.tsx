@@ -14,7 +14,7 @@ import { Input } from "@/components/ui/input";
 import { CheckoutFormData, checkoutSchema } from "@/schemas/checkout";
 import { useCheckoutStore } from "@/stores/checkout-store";
 import { useEffect } from "react";
-import { ScrollArea, ScrollBar } from "../ui/scroll-area";
+import { ScrollArea, ScrollBar } from "@ui/scroll-area";
 import { OrderSummary } from "./order-summary";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import { useShallow } from "zustand/shallow";
