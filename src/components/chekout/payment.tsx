@@ -1,202 +1,227 @@
 // @/components/checkout/payment.tsx
 "use client";
-
-import { useEffect, useState } from "react";
-import { useCheckoutStore, PaymentStatus } from "@/stores/checkout-store";
+import { Controller, useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
-import { CheckCircle2, XCircle, Loader } from "lucide-react";
-import { createClient } from "@/lib/supabase/client";
+import {
+  Field,
+  FieldDescription,
+  FieldError,
+  FieldLabel,
+} from "@/components/ui/field";
+import { useCheckoutStore } from "@/stores/checkout-store";
+import { useCartStore } from "@/stores/cart-store";
+import { ArrowLeft, Phone, Shield } from "lucide-react";
+import { OrderSummary } from "./order-summary";
 import { toast } from "sonner";
+import { useState } from "react";
+import { InputGroup, InputGroupAddon, InputGroupInput } from "@ui/input-group";
+import { ScrollArea, ScrollBar } from "@ui/scroll-area";
+import axios from "axios";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { PaymentFormData, paymentSchema } from "@/schemas/checkout";
+import { useShallow } from "zustand/shallow";
 
-const statusConfig: Record<
-  PaymentStatus,
-  {
-    icon: React.ReactNode;
-    title: string;
-    description: string;
-    iconColor: string;
-    textColor: string;
-  }
-> = {
-  pending: {
-    icon: <Loader className="size-12 animate-spin mx-auto" />,
-    title: "Processing M-Pesa payment...",
-    description: "Check your phone for STK push",
-    iconColor: "text-primary",
-    textColor: "text-muted-foreground",
-  },
-  completed: {
-    icon: <CheckCircle2 className="size-12 mx-auto" />,
-    title: "Payment successful!",
-    description: "Your order has been confirmed",
-    iconColor: "text-green-500",
-    textColor: "text-green-600",
-  },
-  failed: {
-    icon: <XCircle className="size-12 mx-auto" />,
-    title: "Payment failed",
-    description: "Please try again or use a different method",
-    iconColor: "text-destructive",
-    textColor: "text-destructive",
-  },
-};
+export const Payment = () => {
+  const [isProcessing, setIsProcessing] = useState(false);
 
-export function Payment() {
-  const {
-    paymentStatus,
-    setPaymentStatus,
-    setStep,
-    name,
-    phone,
-    email,
-    address,
-    transactionId, // Get this from your store
-  } = useCheckoutStore();
+  // Primitive selectors only
+  const setStep = useCheckoutStore((state) => state.setStep);
+  const setPaymentPhone = useCheckoutStore((state) => state.setPaymentPhone);
+  const transactionId = useCheckoutStore((state) => state.transactionId);
+  const setTransactionId = useCheckoutStore((state) => state.setTransactionId);
+  const cartItems = useCartStore((state) => state.cartItems);
+  const totalPrice = useCartStore((state) => state.totalPrice);
+  const { name, email, phone, address, payment_phone } = useCheckoutStore(
+    useShallow((state) => ({
+      name: state.name,
+      email: state.email,
+      phone: state.phone,
+      address: state.address,
+      payment_phone: state.payment_phone,
+    })),
+  );
 
-  const [isListening, setIsListening] = useState(false);
+  const items = useCartStore((state) => state.items);
 
-  const orderDetails = [
-    { label: "Customer", value: name },
-    { label: "Phone", value: phone },
-    { label: "Email", value: email },
-    { label: "Delivery", value: address },
-  ];
+  const form = useForm<PaymentFormData>({
+    resolver: zodResolver(paymentSchema),
+    defaultValues: {
+      payment_phone: payment_phone || phone, // Default to contact phone, but user can change it for payment
+    },
+  });
 
-  useEffect(() => {
-    if (!transactionId) return;
+  const handlePayment = async (data: PaymentFormData) => {
+    setIsProcessing(true);
+    setPaymentPhone(data.payment_phone); // Update store with payment phone
 
-    const supabase = createClient();
+    toast.loading("Initiating M-Pesa payment...", {
+      id: "checkout-payment",
+    });
 
-    // Initial fetch to get current status
-    const fetchInitialStatus = async () => {
-      const { data, error } = await supabase
-        .from("transactions")
-        .select("status")
-        .eq("id", transactionId)
-        .single();
-
-      if (error) {
-        console.error("Error fetching initial status:", error);
-        return;
-      }
-
-      if (data && data.status !== "pending") {
-        setPaymentStatus(data.status as PaymentStatus);
-        if (data.status === "completed") {
-          setTimeout(() => setStep("done"), 800);
-        }
-      }
-    };
-
-    fetchInitialStatus();
-
-    // Subscribe to realtime changes
-    const channel = supabase
-      .channel(`transaction_${transactionId}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "UPDATE",
-          schema: "public",
-          table: "transactions",
-          filter: `id=eq.${transactionId}`,
-        },
-        (payload) => {
-          console.log("Realtime update received:", payload);
-
-          const newStatus = payload.new.status as PaymentStatus;
-
-          // Update UI based on new status
-          setPaymentStatus(newStatus);
-
-          if (newStatus === "completed") {
-            toast.success("Payment completed successfully!");
-            setTimeout(() => setStep("done"), 800);
-          } else if (newStatus === "failed") {
-            toast.error("Payment failed. Please try again.");
-          }
-        },
-      )
-      .subscribe((status) => {
-        console.log("Realtime subscription status:", status);
-        setIsListening(status === "SUBSCRIBED");
+    try {
+      // Send complete checkout data + items
+      const res = await axios.post("/api/checkout/pay", {
+        name,
+        email,
+        phone,
+        payment_phone: data.payment_phone, // Use phone from payment form (can be different from contact phone)
+        address,
+        items,
+        transactionId,
       });
 
-    // Cleanup subscription on unmount
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [transactionId, setPaymentStatus, setStep]);
+      setTransactionId(res.data.transactionId);
+      toast.dismiss("checkout-payment");
+      toast.success("STK Push sent! Check your phone.");
+      setStep("processing"); // Move to processing step instead of success, since we still need to confirm payment status
+    } catch (error) {
+      toast.dismiss("checkout-payment");
 
-  const currentStatus = statusConfig[paymentStatus];
+      if (axios.isAxiosError(error) && error.response) {
+        const { status, data } = error.response;
 
-  // Retry payment handler
-  const handleRetry = async () => {
-    // Reset to review step to re-initiate payment
-    setStep("review");
+        if (status === 400 && data.errors) {
+          // Show backend validation errors as toasts
+          // This ensures user sees errors even if they're not on the field's step
+          Object.entries(data.errors).forEach(([field, messages]) => {
+            const message = (messages as string[])[0];
+            toast.error(
+              `${field.charAt(0).toUpperCase() + field.slice(1)}: ${message}`,
+              {
+                duration: 5000,
+              },
+            );
+          });
+
+          // If specific field error on phone, also set form error
+          if (data.errors.payment_phone) {
+            form.setError("payment_phone", {
+              message: data.errors.payment_phone[0],
+            });
+          }
+        } else {
+          toast.error(data.message || "Payment failed. Please try again.");
+        }
+      } else {
+        toast.error("Network error. Please check your connection.");
+      }
+    } finally {
+      setIsProcessing(false);
+    }
   };
-
   return (
-    <div className="space-y-6">
-      {/* Connection Status Indicator */}
-      {isListening && paymentStatus === "pending" && (
-        <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
-          <span className="relative flex h-2 w-2">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
-          </span>
-          Waiting for payment confirmation...
-        </div>
-      )}
-
-      {/* Order Summary */}
-      <div className="bg-muted/50 p-4 rounded-lg space-y-2 text-sm border">
-        <h4 className="font-semibold text-foreground">Order Details</h4>
-        {orderDetails.map(({ label, value }) => (
-          <div key={label} className="flex justify-between">
-            <span className="text-muted-foreground">{label}:</span>
-            <span className="font-medium text-foreground">
-              {value || "N/A"}
-            </span>
-          </div>
-        ))}
-      </div>
-
-      <div className={`space-y-4 p-2 rounded-lg border bg-muted/50`}>
-        {/* Status Display */}
-        <div className="text-center py-8 space-y-3">
-          <div className={currentStatus.iconColor}>{currentStatus.icon}</div>
-          <div className="space-y-1">
-            <p className={`font-medium ${currentStatus.textColor}`}>
-              {currentStatus.title}
-            </p>
-            <p className="text-sm text-muted-foreground">
-              {paymentStatus === "pending"
-                ? `Check your phone ${phone} for STK push`
-                : currentStatus.description}
-            </p>
-          </div>
+    <ScrollArea className="h-0 flex-1">
+      <div className="flex-1 pt-6">
+        {/* Order Summary */}
+        <div className="mb-6 px-4">
+          <OrderSummary />
         </div>
 
-        {/* Action Buttons */}
-        <div className="flex gap-2">
-          {paymentStatus === "failed" && (
-            <Button onClick={handleRetry} className="flex-1">
-              Retry Payment
-            </Button>
-          )}
+        {/* Payment Form */}
+        <form onSubmit={form.handleSubmit(handlePayment)}>
+          <div className="space-y-6 px-4 pb-6">
+            <div className="bg-linear-to-r rounded-lg from-emerald-500/10 to-green-500/10 px-6 py-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-emerald-500/10 rounded-full">
+                  <Shield className="w-5 h-5 text-emerald-500" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-emerald-500 dark:text-emerald-700 text-sm">
+                    Secure M-Pesa Payment
+                  </h3>
+                  <p className="text-xs text-emerald-600">
+                    Your transaction is encrypted and protected
+                  </p>
+                </div>
+              </div>
+            </div>
 
-          {(paymentStatus === "completed" || paymentStatus === "failed") && (
+            {/* Phone Number Field */}
+            <Controller
+              name="payment_phone"
+              control={form.control}
+              render={({ field, fieldState }) => (
+                <Field data-invalid={fieldState.invalid}>
+                  <FieldLabel htmlFor="payment_phone">Phone Number</FieldLabel>
+                  <InputGroup>
+                    <InputGroupAddon>
+                      <Phone />
+                    </InputGroupAddon>
+                    <InputGroupInput
+                      {...field}
+                      id="payment_phone"
+                      type="tel"
+                      placeholder="Phone Number (e.g., +254701234567)"
+                      aria-invalid={fieldState.invalid}
+                      autoComplete="tel"
+                    />
+                  </InputGroup>
+                  <FieldDescription>
+                    This is the number that will be used for the M-Pesa
+                    transaction. Make sure it's correct!
+                  </FieldDescription>
+                  {fieldState.invalid && (
+                    <FieldError errors={[fieldState.error]} />
+                  )}
+                </Field>
+              )}
+            />
+
+            {/* Amount Display */}
+            <div className="bg-muted/50 flex justify-between rounded-lg p-4 items-center">
+              <span className="font-semibold">Total</span>
+              <span className="font-bold text-lg text-emerald-600">
+                KSh {totalPrice.toLocaleString()}
+              </span>
+            </div>
+
+            {/* Info Box */}
+            <div className="bg-blue-500/10 border  rounded-lg p-4 text-sm">
+              <p className="font-medium mb-1">How it works:</p>
+              <ol className="list-decimal list-inside space-y-1 text-muted-foreground">
+                <li>Click "Pay with M-Pesa" below</li>
+                <li>You'll receive an STK push on your phone</li>
+                <li>Enter your M-Pesa PIN to confirm</li>
+                <li>Payment completed instantly!</li>
+              </ol>
+            </div>
+          </div>
+          {/* Actions */}
+          <div className="flex gap-2 pt-3 sticky bottom-0 bg-background/80 backdrop-blur-sm border-t p-4 rounded-t-lg">
             <Button
+              type="button"
+              size={"xl"}
               variant="outline"
-              className="flex-1"
               onClick={() => setStep("review")}
+              disabled={isProcessing}
+              className="flex-1"
             >
-              Back to Review
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Back
             </Button>
-          )}
-        </div>
+
+            <Button
+              type="submit"
+              size={"xl"}
+              className="flex-3"
+              disabled={isProcessing || cartItems.length === 0}
+            >
+              {isProcessing ? (
+                <span className="flex items-center gap-2">
+                  <span className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
+                  Processing...
+                </span>
+              ) : (
+                <>
+                  Pay with M-Pesa
+                  <span className="ml-2">→</span>
+                </>
+              )}
+            </Button>
+          </div>
+        </form>
       </div>
-    </div>
+      <ScrollBar />
+    </ScrollArea>
   );
-}
+};

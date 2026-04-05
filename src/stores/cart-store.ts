@@ -1,5 +1,4 @@
-// @/stores/cart-store.ts
-import { create } from "zustand";
+import { create} from "zustand";
 import { persist } from "zustand/middleware";
 import { immer } from "zustand/middleware/immer";
 import { Product } from "@/types/product";
@@ -9,8 +8,11 @@ export type CartItem = {
   quantity: number;
 };
 
-interface CartStore {
-  // Cart items (minimal)
+// Enriched cart item with full product data
+export type EnrichedCartItem = CartItem & { product: Product };
+
+interface CartState {
+  // Cart items (minimal storage)
   items: CartItem[];
 
   // Products cache (fetched from API)
@@ -18,44 +20,63 @@ interface CartStore {
 
   // UI State
   isCartOpen: boolean;
-  isCheckoutOpen: boolean;
   isLoading: boolean;
   error: string | null;
 
-  // Cart Actions
+  // Computed state (derived from items + products)
+  cartItems: EnrichedCartItem[];
+  totalPrice: number;
+  totalItems: number;
+
+  // Actions
   addToCart: (productId: string) => void;
   removeFromCart: (productId: string) => void;
   updateQuantity: (productId: string, quantity: number) => void;
   clearCart: () => void;
-
-  // Product Actions
   setProducts: (products: Product[]) => void;
   fetchProducts: () => Promise<void>;
-
-  // UI Actions
   setIsCartOpen: (open: boolean) => void;
-  setIsCheckoutOpen: (open: boolean) => void;
 
-  // Getters
-  getTotalItems: () => number;
-  getTotalPrice: () => number;
+  // Individual getters
   getProduct: (productId: string) => Product | undefined;
-  getCartItemsWithProducts: () => Array<CartItem & { product: Product }>;
   isInCart: (productId: string) => boolean;
   getItemQuantity: (productId: string) => number;
 }
 
-export const useCartStore = create<CartStore>()(
+// Helper to compute derived state
+const computeDerivedState = (items: CartItem[], products: Product[]) => {
+  const cartItems = items
+    .map((item) => ({
+      ...item,
+      product: products.find((p) => p.id === item.productId),
+    }))
+    .filter((item): item is EnrichedCartItem => item.product !== undefined);
+
+  const totalPrice = cartItems.reduce(
+    (sum, item) => sum + item.product.price * item.quantity,
+    0,
+  );
+
+  const totalItems = items.reduce((sum, item) => sum + item.quantity, 0);
+
+  return { cartItems, totalPrice, totalItems };
+};
+
+export const useCartStore = create<CartState>()(
   immer(
     persist(
       (set, get) => ({
+        // Initial state
         items: [],
         products: [],
         isCartOpen: false,
-        isCheckoutOpen: false,
         isLoading: false,
         error: null,
+        cartItems: [],
+        totalPrice: 0,
+        totalItems: 0,
 
+        // Actions (all update derived state after mutation)
         addToCart: (productId) => {
           set((state) => {
             const existingItem = state.items.find(
@@ -67,6 +88,9 @@ export const useCartStore = create<CartStore>()(
               state.items.push({ productId, quantity: 1 });
             }
           });
+          // Recompute derived state
+          const { items, products } = get();
+          set(computeDerivedState(items, products));
         },
 
         removeFromCart: (productId) => {
@@ -76,6 +100,8 @@ export const useCartStore = create<CartStore>()(
             );
             if (index !== -1) state.items.splice(index, 1);
           });
+          const { items, products } = get();
+          set(computeDerivedState(items, products));
         },
 
         updateQuantity: (productId, quantity) => {
@@ -89,11 +115,19 @@ export const useCartStore = create<CartStore>()(
             );
             if (item) item.quantity = quantity;
           });
+          const { items, products } = get();
+          set(computeDerivedState(items, products));
         },
 
-        clearCart: () => set({ items: [] }),
+        clearCart: () => {
+          set({ items: [], cartItems: [], totalPrice: 0, totalItems: 0 });
+        },
 
-        setProducts: (products) => set({ products }),
+        setProducts: (products) => {
+          set({ products });
+          const { items } = get();
+          set(computeDerivedState(items, products));
+        },
 
         fetchProducts: async () => {
           set({ isLoading: true, error: null });
@@ -102,6 +136,8 @@ export const useCartStore = create<CartStore>()(
               axios.default.get<Product[]>("/api/products"),
             );
             set({ products: data, isLoading: false });
+            const { items } = get();
+            set(computeDerivedState(items, data));
           } catch (err) {
             set({
               error: err instanceof Error ? err.message : "Failed to fetch",
@@ -111,34 +147,10 @@ export const useCartStore = create<CartStore>()(
         },
 
         setIsCartOpen: (open) => set({ isCartOpen: open }),
-        setIsCheckoutOpen: (open) => set({ isCheckoutOpen: open }),
 
-        getTotalItems: () =>
-          get().items.reduce((sum, item) => sum + item.quantity, 0),
-
-        getTotalPrice: () => {
-          const { items, products } = get();
-          return items.reduce((sum, item) => {
-            const product = products.find((p) => p.id === item.productId);
-            return sum + (product?.price || 0) * item.quantity;
-          }, 0);
-        },
-
+        // Individual getters (for single-item lookups)
         getProduct: (productId) =>
           get().products.find((p) => p.id === productId),
-
-        getCartItemsWithProducts: () => {
-          const { items, products } = get();
-          return items
-            .map((item) => ({
-              ...item,
-              product: products.find((p) => p.id === item.productId),
-            }))
-            .filter(
-              (item): item is CartItem & { product: Product } =>
-                item.product !== undefined,
-            );
-        },
 
         isInCart: (productId) =>
           get().items.some((item) => item.productId === productId),
@@ -149,19 +161,18 @@ export const useCartStore = create<CartStore>()(
       }),
       {
         name: "mofarm_cart",
-        partialize: (state) => ({ items: state.items }), // Don't persist products, only cart
+        partialize: (state) => ({
+          items: state.items,
+          // Don't persist derived state - it will be recomputed on load
+        }),
+        onRehydrateStorage: () => (state) => {
+          // Recompute derived state after persistence rehydrates
+          if (state) {
+            const { items, products } = state;
+            return { ...state, ...computeDerivedState(items, products) };
+          }
+        },
       },
     ),
   ),
 );
-
-// Convenience hook that returns enriched cart items
-export function useCart() {
-  const store = useCartStore();
-  return {
-    ...store,
-    cartItems: store.getCartItemsWithProducts(), // Enriched with product data
-    totalPrice: store.getTotalPrice(),
-    totalItems: store.getTotalItems(),
-  };
-}

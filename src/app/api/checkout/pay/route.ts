@@ -1,6 +1,6 @@
 // @/api/checkout/pay/route.ts
 import { NextResponse } from "next/server";
-import { checkoutSchema } from "@/schemas/checkout";
+import { combineCheckoutSchema } from "@/schemas/checkout";
 import { ZodError } from "zod";
 import { formatPhoneNumber, sendStk } from "@/lib/payment";
 import { createSuperClient } from "@/lib/supabase/admin";
@@ -11,7 +11,7 @@ export async function POST(request: Request) {
     const supabase = await createSuperClient();
 
     // parse() throws on validation failure
-    const validatedData = checkoutSchema.parse(body);
+    const validatedData = combineCheckoutSchema.parse(body);
 
     //Calculating the total price of the items in the cart
     // const { data: totalAmount, error: totalError } = await supabase.rpc(
@@ -32,36 +32,60 @@ export async function POST(request: Request) {
     //   );
     // }
 
-    //creating the order in the database
-    const { data: order, error: orderError } = await supabase
-      .from("orders")
-      .insert({
-        payment_status: "pending",
-        name: validatedData.name,
-        email: validatedData.email,
-        phone: validatedData.phone,
-        amount: totalAmount,
-        order_status: "pending",
-        items: body.items,
-      })
-      .select("*")
-      .single();
+    //Figure out if the order already exists for this transaction
+    const transactionId = body.transactionId;
+    let orderId = null;
+    if (transactionId) {
+      const { data: existingTransaction, error: transactionError } =
+        await supabase
+          .from("transactions")
+          .select("*")
+          .eq("id", transactionId)
+          .single();
 
-    if (orderError) {
-      console.log("Error creating order in database:");
-      console.log(orderError);
-      return NextResponse.json(
-        { message: "Failed to create order" },
-        { status: 500 },
-      );
+      if (transactionError) {
+        console.log("Error fetching existing transaction:");
+        console.log(transactionError);
+        return NextResponse.json(
+          { message: "Failed to fetch existing transaction" },
+          { status: 500 },
+        );
+      }
+      orderId = existingTransaction?.order_id;
+    } else {
+      //creating the order in the database
+      const { data: order, error: orderError } = await supabase
+        .from("orders")
+        .insert({
+          payment_status: "pending",
+          name: validatedData.name,
+          email: validatedData.email,
+          phone: validatedData.phone,
+          amount: totalAmount,
+          order_status: "pending",
+          items: body.items,
+        })
+        .select("*")
+        .single();
+
+      if (orderError) {
+        console.log("Error creating order in database:");
+        console.log(orderError);
+        return NextResponse.json(
+          { message: "Failed to create order" },
+          { status: 500 },
+        );
+      }
+      orderId = order.id;
     }
 
     //Creating the transaction in the transaction table
     const { data: transaction, error: transactionError } = await supabase
       .from("transactions")
       .insert({
-        order_id: order.id,
+        order_id: orderId,
         status: "pending",
+        phone_number: formatPhoneNumber(validatedData.payment_phone),
         amount: totalAmount,
         method: "M-Pesa",
       })
@@ -80,7 +104,7 @@ export async function POST(request: Request) {
     //Calculate the price of all the items in the cart
     const mpesaData = await sendStk(
       totalAmount,
-      formatPhoneNumber(validatedData.phone),
+      formatPhoneNumber(validatedData.payment_phone),
       transaction.id,
     );
 

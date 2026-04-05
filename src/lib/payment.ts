@@ -44,7 +44,7 @@ export async function sendStk(
   ).toString("base64");
 
   // Construct and encode the Callback URL
-  const callbackUrlWithQuery = `https://lz62klsuhtff7kjv2ytqb3e74u.srv.us/api/checkout/callback?identifier=${identifier}`;
+  const callbackUrlWithQuery = `${process.env.MPESA_CALLBACK_URL}?identifier=${identifier}`;
 
   // 3. Build STK push payload
   const stkPayload = {

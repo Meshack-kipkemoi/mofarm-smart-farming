@@ -16,7 +16,8 @@ import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { MofarmLogo } from "./logo";
 import { Separator } from "./ui/separator";
-import { useCart } from "@/stores/cart-store";
+import { useCartStore } from "@/stores/cart-store";
+import { useShallow } from "zustand/shallow";
 
 const navLinks = [
   { id: "products", label: "Products" },
@@ -25,7 +26,13 @@ const navLinks = [
 ];
 
 const Navbar = () => {
-  const { totalItems, setIsCartOpen } = useCart();
+  const { totalItems, setIsCartOpen } = useCartStore(
+    useShallow((state) => ({
+      totalItems: state.totalItems,
+      setIsCartOpen: state.setIsCartOpen,
+    })),
+  );
+
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
 

@@ -1,9 +1,8 @@
 import type { Metadata } from "next";
 import { Inter, Montserrat, Geist } from "next/font/google";
 import "./globals.css";
-import Navbar from "@/components/Navbar";
-import CartDrawer from "@/components/CartDrawer";
-import CheckoutModal from "@/components/chekout/CheckoutModal";
+import Navbar from "@/components/navbar";
+import CartSheet from "@/components/chekout/cart-sheet";
 import Footer from "@/components/Footer"; // Import it here
 import { cn } from "@/lib/utils";
 import { Toaster } from "@/components/ui/sonner";
@@ -51,8 +50,7 @@ export default function RootLayout({
             <Footer />
           </div>
 
-          <CartDrawer />
-          <CheckoutModal />
+          <CartSheet />
         </ThemeProvider>
       </body>
     </html>
