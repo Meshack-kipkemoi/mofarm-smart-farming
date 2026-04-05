@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Inter, Montserrat, Geist } from "next/font/google";
 import "./globals.css";
-import Navbar from "@/components/navbar";
+import Navbar from "@/components/Navbar";
 import CartSheet from "@/components/chekout/cart-sheet";
 import Footer from "@/components/Footer"; // Import it here
 import { cn } from "@/lib/utils";
