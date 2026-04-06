@@ -28,7 +28,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@ui/alert-dialog";
 import { PaymentStatus } from "./payment-status";
 import { CartSuccess } from "./cart-success";
@@ -140,9 +139,6 @@ const CartSheet = () => {
         </SheetContent>
       </Sheet>
       <AlertDialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <AlertDialogTrigger asChild>
-          <Button variant="outline">Show Dialog</Button>
-        </AlertDialogTrigger>
         <AlertDialogContent className="p-0 pt-3 overflow-hidden">
           <AlertDialogHeader className="px-4">
             <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
