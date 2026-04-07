@@ -14,23 +14,21 @@ export async function POST(request: Request) {
     const validatedData = combineCheckoutSchema.parse(body);
 
     //Calculating the total price of the items in the cart
-    // const { data: totalAmount, error: totalError } = await supabase.rpc(
-    //   "calculate_order_total",
-    //   {
-    //     order_items: body.items,
-    //   },
-    // );
+    const { data: totalAmount, error: totalError } = await supabase.rpc(
+      "calculate_order_total",
+      {
+        order_items: body.items,
+      },
+    );
 
-    const totalAmount = 1;
-
-    // if (totalError) {
-    //   console.log("Error calculating total amount:");
-    //   console.log(totalError);
-    //   return NextResponse.json(
-    //     { message: "Failed to calculate total amount" },
-    //     { status: 500 },
-    //   );
-    // }
+    if (totalError) {
+      console.log("Error calculating total amount:");
+      console.log(totalError);
+      return NextResponse.json(
+        { message: "Failed to calculate total amount" },
+        { status: 500 },
+      );
+    }
 
     //Figure out if the order already exists for this transaction
     const transactionId = body.transactionId;
