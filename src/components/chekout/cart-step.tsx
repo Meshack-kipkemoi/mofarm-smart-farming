@@ -5,18 +5,11 @@ import { useCartStore } from "@/stores/cart-store";
 import { SheetFooter } from "@ui/sheet";
 import { useCheckoutStore } from "@/stores/checkout-store";
 import { ScrollArea, ScrollBar } from "@ui/scroll-area";
-import { useShallow } from "zustand/shallow";
 import { CartItem } from "./cart-item";
 
 export const CartStep = () => {
-  const { cartItems, totalPrice } = useCartStore(
-    useShallow((state) => ({
-      cartItems: state.cartItems,
-      updateQuantity: state.updateQuantity,
-      removeFromCart: state.removeFromCart,
-      totalPrice: state.totalPrice,
-    })),
-  );
+  const cartItems = useCartStore((state) => state.cartItems);
+  const totalPrice = useCartStore((state) => state.totalPrice);
   const setStep = useCheckoutStore((state) => state.setStep);
 
   return (

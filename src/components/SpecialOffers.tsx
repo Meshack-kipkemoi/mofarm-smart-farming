@@ -10,11 +10,11 @@ import {
 } from "@/components/ui/carousel";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { Clock, Tag, ShoppingBasket } from "lucide-react";
+import { Clock, Tag, ShoppingBasket, Check } from "lucide-react";
 import { Button } from "./ui/button";
 import { Image } from "./ui/image";
 import { useCartStore } from "@/stores/cart-store";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 /* ─── helpers ─────────────────────────────────────────────── */
 function formatPrice(amount: number) {
@@ -37,6 +37,13 @@ function daysLeft(validTo: string) {
 function OfferCard({ offer, index }: { offer: ProductOffer; index: number }) {
   const savings = offer.price - offer.discounted_price;
   const { addToCart } = useCartStore();
+  const [added, setAdded] = useState(false);
+
+  const handleAdd = () => {
+    addToCart(offer.product_id);
+    setAdded(true);
+    setTimeout(() => setAdded(false), 1200);
+  };
 
   return (
     <Card
@@ -112,11 +119,8 @@ function OfferCard({ offer, index }: { offer: ProductOffer; index: number }) {
         {/* Savings pill */}
 
         {/* CTA */}
-        <Button
-          className="w-full mt-1"
-          onClick={() => addToCart(offer.product_id)}
-        >
-          <ShoppingBasket />
+        <Button className="w-full mt-1" onClick={handleAdd}>
+          {added ? <Check /> : <ShoppingBasket />}
           Add to Cart
         </Button>
       </CardContent>

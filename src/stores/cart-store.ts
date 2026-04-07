@@ -3,6 +3,7 @@ import { persist } from "zustand/middleware";
 import { immer } from "zustand/middleware/immer";
 import { Product } from "@/types/product";
 import { ProductOffer } from "@/types/offer";
+import { useCheckoutStore } from "./checkout-store";
 
 export type CartItem = {
   productId: string;
@@ -43,7 +44,13 @@ interface CartState {
 }
 
 // Helper to compute derived state
-const computeDerivedState = (items: CartItem[], products: Product[]) => {
+const computeDerivedState = (
+  items: CartItem[],
+  products: Product[],
+  discountedProducts: ProductOffer[],
+) => {
+  // const discountedProducts = useCartStore.getState().discounted_products
+
   const cartItems = items
     .map((item) => ({
       ...item,
@@ -51,10 +58,14 @@ const computeDerivedState = (items: CartItem[], products: Product[]) => {
     }))
     .filter((item): item is EnrichedCartItem => item.product !== undefined);
 
-  const totalPrice = cartItems.reduce(
-    (sum, item) => sum + item.product.price * item.quantity,
-    0,
-  );
+  const totalPrice = cartItems.reduce((sum, item) => {
+    const offer = discountedProducts.find(
+      // 👈 check for discount
+      (d) => d.product_id === item.productId,
+    );
+    const unitPrice = offer ? offer.discounted_price : item.product.price;
+    return sum + unitPrice * item.quantity;
+  }, 0);
 
   const totalItems = items.reduce((sum, item) => sum + item.quantity, 0);
 
@@ -86,9 +97,10 @@ export const useCartStore = create<CartState>()(
               state.items.push({ productId, quantity: 1 });
             }
           });
+          useCheckoutStore.getState().setStep("cart");
           // Recompute derived state
-          const { items, products } = get();
-          set(computeDerivedState(items, products));
+          const { items, products, discounted_products } = get();
+          set(computeDerivedState(items, products, discounted_products));
         },
 
         removeFromCart: (productId) => {
@@ -98,8 +110,8 @@ export const useCartStore = create<CartState>()(
             );
             if (index !== -1) state.items.splice(index, 1);
           });
-          const { items, products } = get();
-          set(computeDerivedState(items, products));
+          const { items, products, discounted_products } = get();
+          set(computeDerivedState(items, products, discounted_products));
         },
 
         updateQuantity: (productId, quantity) => {
@@ -113,8 +125,8 @@ export const useCartStore = create<CartState>()(
             );
             if (item) item.quantity = quantity;
           });
-          const { items, products } = get();
-          set(computeDerivedState(items, products));
+          const { items, products, discounted_products } = get();
+          set(computeDerivedState(items, products, discounted_products));
         },
 
         clearCart: () => {
@@ -123,8 +135,8 @@ export const useCartStore = create<CartState>()(
 
         setProducts: (products) => {
           set({ products });
-          const { items } = get();
-          set(computeDerivedState(items, products));
+          const { items, discounted_products } = get();
+          set(computeDerivedState(items, products, discounted_products));
         },
 
         setDiscountedProducts: (products) => {
@@ -153,8 +165,11 @@ export const useCartStore = create<CartState>()(
         onRehydrateStorage: () => (state) => {
           // Recompute derived state after persistence rehydrates
           if (state) {
-            const { items, products } = state;
-            return { ...state, ...computeDerivedState(items, products) };
+            const { items, products, discounted_products } = state;
+            return {
+              ...state,
+              ...computeDerivedState(items, products, discounted_products),
+            };
           }
         },
       },
