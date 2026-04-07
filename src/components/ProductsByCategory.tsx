@@ -2,19 +2,20 @@
 
 import { useState, useMemo, useEffect } from "react";
 import ProductCard from "./ProductCard";
-import { ChevronDown, ChevronUp, Search, X, Loader2 } from "lucide-react";
+import { ChevronDown, ChevronUp, Search, X } from "lucide-react";
 import { useCartStore } from "@/stores/cart-store";
+import { Product } from "@/types/product";
 
 const INITIAL_COUNT = 4;
 
-const ProductsByCategory = () => {
-  const { products, isLoading, error, fetchProducts } = useCartStore();
+const ProductsByCategory = ({ products }: { products: Product[] }) => {
+  const { setProducts } = useCartStore();
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
-    fetchProducts();
-  }, [fetchProducts]);
+    setProducts(products);
+  }, [setProducts]);
 
   // Extract unique categories from stored products
   const categories = useMemo(() => {
@@ -62,33 +63,6 @@ const ProductsByCategory = () => {
 
     return { categories: filteredCats, products: filteredProds };
   }, [searchQuery, categories, products]);
-
-  if (isLoading) {
-    return (
-      <section id="products" className="py-16">
-        <div className="container mx-auto px-4 text-center">
-          <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto" />
-          <p className="mt-3 text-muted-foreground">Loading products...</p>
-        </div>
-      </section>
-    );
-  }
-
-  if (error) {
-    return (
-      <section id="products" className="py-16">
-        <div className="container mx-auto px-4 text-center">
-          <p className="text-red-500 mb-4">Error: {error}</p>
-          <button
-            onClick={() => fetchProducts()}
-            className="px-6 py-2 bg-primary text-primary-foreground rounded-lg hover:opacity-90"
-          >
-            Retry
-          </button>
-        </div>
-      </section>
-    );
-  }
 
   return (
     <section id="products" className="py-16">

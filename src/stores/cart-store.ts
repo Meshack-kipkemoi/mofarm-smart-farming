@@ -1,7 +1,8 @@
-import { create} from "zustand";
+import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { immer } from "zustand/middleware/immer";
 import { Product } from "@/types/product";
+import { ProductOffer } from "@/types/offer";
 
 export type CartItem = {
   productId: string;
@@ -14,14 +15,13 @@ export type EnrichedCartItem = CartItem & { product: Product };
 interface CartState {
   // Cart items (minimal storage)
   items: CartItem[];
+  discounted_products: ProductOffer[];
 
   // Products cache (fetched from API)
   products: Product[];
 
   // UI State
   isCartOpen: boolean;
-  isLoading: boolean;
-  error: string | null;
 
   // Computed state (derived from items + products)
   cartItems: EnrichedCartItem[];
@@ -34,9 +34,8 @@ interface CartState {
   updateQuantity: (productId: string, quantity: number) => void;
   clearCart: () => void;
   setProducts: (products: Product[]) => void;
-  fetchProducts: () => Promise<void>;
+  setDiscountedProducts: (products: ProductOffer[]) => void;
   setIsCartOpen: (open: boolean) => void;
-
   // Individual getters
   getProduct: (productId: string) => Product | undefined;
   isInCart: (productId: string) => boolean;
@@ -68,10 +67,9 @@ export const useCartStore = create<CartState>()(
       (set, get) => ({
         // Initial state
         items: [],
+        discounted_products: [],
         products: [],
         isCartOpen: false,
-        isLoading: false,
-        error: null,
         cartItems: [],
         totalPrice: 0,
         totalItems: 0,
@@ -129,21 +127,8 @@ export const useCartStore = create<CartState>()(
           set(computeDerivedState(items, products));
         },
 
-        fetchProducts: async () => {
-          set({ isLoading: true, error: null });
-          try {
-            const { data } = await import("axios").then((axios) =>
-              axios.default.get<Product[]>("/api/products"),
-            );
-            set({ products: data, isLoading: false });
-            const { items } = get();
-            set(computeDerivedState(items, data));
-          } catch (err) {
-            set({
-              error: err instanceof Error ? err.message : "Failed to fetch",
-              isLoading: false,
-            });
-          }
+        setDiscountedProducts: (products) => {
+          set({ discounted_products: products });
         },
 
         setIsCartOpen: (open) => set({ isCartOpen: open }),
