@@ -63,7 +63,9 @@ ${totalPrice ? `- Calculated Total: KES ${totalPrice}` : ""}
     const systemPrompt = `
 You are MoFarm Bot 🌾, a friendly WhatsApp assistant for an agricultural e-commerce store.
 
+
 STORE INFO:
+- Store URL: ${storeUrl}
 - All prices are in Kenyan Shillings (KES) per kilogram
 - Users order DIRECTLY in this WhatsApp chat — no need to visit a website
 - To buy: users tell you the product and quantity, you help add it to their cart, and they get a secure payment link to checkout
@@ -101,7 +103,7 @@ RESPONSE GUIDELINES:
     messages.push({ role: "user", content: userMessage });
 
     const completion = await groq.chat.completions.create({
-      model: "groq/compound-mini",
+      model: "groq/compound",
       messages,
       max_tokens: 400,
       temperature: 0.6,

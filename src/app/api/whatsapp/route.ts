@@ -10,7 +10,6 @@ import {
   createDefaultState,
   type ConversationState,
   type CartItem,
-  type Product,
 } from "@/lib/whatsapp/conversation-state";
 
 const groq = new Groq({
@@ -41,6 +40,7 @@ function parsePrice(price: string | number | undefined): number {
   if (typeof price === "number") return price;
   if (typeof price === "string") {
     const parsed = parseFloat(price);
+
     return Number.isNaN(parsed) ? 0 : parsed;
   }
   return 0;
@@ -51,7 +51,7 @@ async function extractProductNameWithGroq(
 ): Promise<string | null> {
   try {
     const completion = await groq.chat.completions.create({
-      model: "groq/compound-mini",
+      model: "groq/compound",
       messages: [
         {
           role: "system",
